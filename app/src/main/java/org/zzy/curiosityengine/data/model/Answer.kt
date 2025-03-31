@@ -17,6 +17,9 @@ import androidx.room.PrimaryKey
             childColumns = ["questionId"],
             onDelete = ForeignKey.CASCADE
         )
+    ],
+    indices = [
+        androidx.room.Index("questionId")
     ]
 )
 data class Answer(
