@@ -65,6 +65,7 @@ import coil.request.ImageRequest
 import org.zzy.curiosityengine.R
 import org.zzy.curiosityengine.data.model.Answer
 import org.zzy.curiosityengine.data.model.Question
+import org.zzy.curiosityengine.ui.components.ExperimentOrGameItem
 import org.zzy.curiosityengine.ui.theme.BackgroundLight
 import org.zzy.curiosityengine.ui.theme.Primary
 import org.zzy.curiosityengine.ui.theme.PrimaryVariant
@@ -376,6 +377,68 @@ fun AnswerContent(
             }
         }
 
+        // 推荐小实验
+        if (answer.experiments.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "推荐小实验",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    // 小实验列表
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        answer.experiments.forEach { experiment ->
+                            ExperimentOrGameItem(
+                                content = experiment,
+                                isExperiment = true
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 互动小游戏
+        if (answer.games.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "互动小游戏",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    // 小游戏列表
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        answer.games.forEach { game ->
+                            ExperimentOrGameItem(
+                                content = game,
+                                isExperiment = false
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
         // 相关问题
         if (answer.relatedQuestions.isNotEmpty()) {
             Card(

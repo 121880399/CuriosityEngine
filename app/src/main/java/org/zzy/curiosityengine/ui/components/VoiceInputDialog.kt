@@ -105,6 +105,8 @@ fun VoiceInputDialog(
             is VoiceRecognitionService.RecognitionState.Success -> {
                 recognitionResult?.let { result ->
                     if (result.isNotEmpty()) {
+                        // 确保在主线程中调用回调
+                        android.util.Log.d("VoiceInputDialog", "识别成功，结果：$result")
                         onTextRecognized(result)
                         onDismiss()
                     }
@@ -116,6 +118,17 @@ fun VoiceInputDialog(
             }
             else -> {
                 showErrorMessage = false
+            }
+        }
+    }
+    
+    // 单独监听识别结果变化
+    LaunchedEffect(recognitionResult) {
+        recognitionResult?.let { result ->
+            if (result.isNotEmpty()) {
+                android.util.Log.d("VoiceInputDialog", "识别结果更新：$result")
+                // 不再限制只有在Success状态才传递结果，任何有效结果都传递给输入框
+                onTextRecognized(result)
             }
         }
     }

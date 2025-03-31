@@ -56,7 +56,7 @@ class AnswerRepository(
             val messages = listOf(
                 Message(
                     role = "system",
-                    content = "你是一个专为4-14岁儿童设计的AI助手，名为'好奇心引擎'。请用简单、生动、有趣的语言回答问题，确保内容准确且适合儿童理解。回答应该包含相关的科学知识，并引导孩子进一步探索。回答中可以适当加入表情符号增加趣味性。\n\n请以JSON格式返回你的回答，格式如下：\n{\n  \"answer\": \"你的回答内容\",\n  \"relatedQuestions\": [\"问题1？\", \"问题2？\", \"问题3？\"]\n}\n\n其中，answer字段包含你对问题的回答，relatedQuestions字段包含3个与当前问题相关的问题，这些问题应该能引导孩子进一步探索相关知识。"
+                    content = "你是一个专为4-14岁儿童设计的AI助手，名为'好奇心引擎'。请用简单、生动、有趣的语言回答问题，确保内容准确且适合儿童理解。回答应该包含相关的科学知识，并引导孩子进一步探索。回答中可以适当加入表情符号增加趣味性。\n\n在每个回答后，请推荐1-2个安全的、适合儿童在家进行的小实验（不能有任何危险性，不能编造不存在的实验），以及1-2个互动小游戏（同样必须安全无危险，不能编造）。小实验应该具体描述材料和步骤，小游戏应该有明确的规则和玩法。\n\n请以JSON格式返回你的回答，格式如下：\n{\n  \"answer\": \"你的回答内容\",\n  \"experiments\": [\"实验1描述\", \"实验2描述\"],\n  \"games\": [\"游戏1描述\", \"游戏2描述\"],\n  \"relatedQuestions\": [\"问题1？\", \"问题2？\", \"问题3？\"]\n}\n\n其中，answer字段包含你对问题的回答，experiments字段包含1-2个安全的小实验建议，games字段包含1-2个互动小游戏建议，relatedQuestions字段包含3个与当前问题相关的问题，这些问题应该能引导孩子进一步探索相关知识。所有推荐的实验和游戏必须是真实存在的、安全的，不能编造。请确保实验和游戏的描述详细且易于理解，适合儿童在家中在父母监督下进行。"
                 ),
                 Message(
                     role = "user",
@@ -135,7 +135,9 @@ class AnswerRepository(
                 val answer = Answer(
                     questionId = questionId,
                     content = answerContent ?: "",  // 确保content不为null
-                    relatedQuestions = relatedQuestions
+                    relatedQuestions = relatedQuestions,
+                    experiments = extractExperiments(responseContent),
+                    games = extractGames(responseContent)
                 )
                 
                 android.util.Log.d("AnswerRepository", "准备保存答案到数据库")
@@ -298,6 +300,152 @@ class AnswerRepository(
                 "这和我们的日常生活有什么关系？"
             )
         }
+    }
+    
+    /**
+     * 从答案内容中提取推荐的小实验
+     * @param content 答案内容
+     * @return 小实验列表
+     */
+    private fun extractExperiments(content: String): List<String> {
+        try {
+            // 尝试解析JSON格式的响应
+            val jsonContent = content.trim()
+            if (jsonContent.startsWith("{") && jsonContent.endsWith("}")) {
+                try {
+                    // 使用JSON解析库
+                    val jsonObject = org.json.JSONObject(jsonContent)
+                    if (jsonObject.has("experiments")) {
+                        val experimentsArray = jsonObject.getJSONArray("experiments")
+                        val extractedExperiments = mutableListOf<String>()
+                        
+                        for (i in 0 until experimentsArray.length()) {
+                            extractedExperiments.add(experimentsArray.getString(i))
+                        }
+                        
+                        android.util.Log.d("AnswerRepository", "从JSON成功提取到${extractedExperiments.size}个小实验")
+                        return extractedExperiments
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("AnswerRepository", "提取小实验JSON解析失败: ${e.message}", e)
+                    // 回退到正则表达式方法
+                    val experimentsPattern = "\"experiments\"\\s*:\\s*\\[(.*?)\\](?=,|\\})"
+                    
+                    val experimentsMatcher = Regex(experimentsPattern, RegexOption.DOT_MATCHES_ALL).find(jsonContent)
+                    if (experimentsMatcher != null) {
+                        val experimentsJson = experimentsMatcher.groupValues[1]
+                        // 提取引号中的实验
+                        val extractedExperiments = Regex("\"(.*?)\"")
+                            .findAll(experimentsJson)
+                            .map { it.groupValues[1] }
+                            .toList()
+                        
+                        if (extractedExperiments.isNotEmpty()) {
+                            android.util.Log.d("AnswerRepository", "使用正则表达式从JSON提取到${extractedExperiments.size}个小实验")
+                            return extractedExperiments
+                        }
+                    }
+                }
+            }
+            
+            // 如果JSON解析失败，尝试从文本中提取
+            val experimentsMarkers = listOf("推荐实验：", "小实验：", "实验活动：", "动手实验：")
+            for (marker in experimentsMarkers) {
+                val markerIndex = content.indexOf(marker)
+                if (markerIndex != -1) {
+                    val remainingText = content.substring(markerIndex + marker.length)
+                    val endIndex = remainingText.indexOf("\n\n")
+                    val experimentsText = if (endIndex != -1) remainingText.substring(0, endIndex) else remainingText
+                    
+                    // 按行分割，每行应该是一个实验
+                    val experiments = experimentsText.split("\n")
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                    
+                    if (experiments.isNotEmpty()) {
+                        android.util.Log.d("AnswerRepository", "从文本中提取到${experiments.size}个小实验")
+                        return experiments
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AnswerRepository", "提取小实验异常: ${e.message}", e)
+        }
+        
+        return emptyList()
+    }
+    
+    /**
+     * 从答案内容中提取推荐的互动小游戏
+     * @param content 答案内容
+     * @return 互动小游戏列表
+     */
+    private fun extractGames(content: String): List<String> {
+        try {
+            // 尝试解析JSON格式的响应
+            val jsonContent = content.trim()
+            if (jsonContent.startsWith("{") && jsonContent.endsWith("}")) {
+                try {
+                    // 使用JSON解析库
+                    val jsonObject = org.json.JSONObject(jsonContent)
+                    if (jsonObject.has("games")) {
+                        val gamesArray = jsonObject.getJSONArray("games")
+                        val extractedGames = mutableListOf<String>()
+                        
+                        for (i in 0 until gamesArray.length()) {
+                            extractedGames.add(gamesArray.getString(i))
+                        }
+                        
+                        android.util.Log.d("AnswerRepository", "从JSON成功提取到${extractedGames.size}个互动小游戏")
+                        return extractedGames
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("AnswerRepository", "提取互动小游戏JSON解析失败: ${e.message}", e)
+                    // 回退到正则表达式方法
+                    val gamesPattern = "\"games\"\\s*:\\s*\\[(.*?)\\](?=,|\\})"
+                    
+                    val gamesMatcher = Regex(gamesPattern, RegexOption.DOT_MATCHES_ALL).find(jsonContent)
+                    if (gamesMatcher != null) {
+                        val gamesJson = gamesMatcher.groupValues[1]
+                        // 提取引号中的游戏
+                        val extractedGames = Regex("\"(.*?)\"")
+                            .findAll(gamesJson)
+                            .map { it.groupValues[1] }
+                            .toList()
+                        
+                        if (extractedGames.isNotEmpty()) {
+                            android.util.Log.d("AnswerRepository", "使用正则表达式从JSON提取到${extractedGames.size}个互动小游戏")
+                            return extractedGames
+                        }
+                    }
+                }
+            }
+            
+            // 如果JSON解析失败，尝试从文本中提取
+            val gamesMarkers = listOf("推荐游戏：", "小游戏：", "互动游戏：", "趣味游戏：")
+            for (marker in gamesMarkers) {
+                val markerIndex = content.indexOf(marker)
+                if (markerIndex != -1) {
+                    val remainingText = content.substring(markerIndex + marker.length)
+                    val endIndex = remainingText.indexOf("\n\n")
+                    val gamesText = if (endIndex != -1) remainingText.substring(0, endIndex) else remainingText
+                    
+                    // 按行分割，每行应该是一个游戏
+                    val games = gamesText.split("\n")
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                    
+                    if (games.isNotEmpty()) {
+                        android.util.Log.d("AnswerRepository", "从文本中提取到${games.size}个互动小游戏")
+                        return games
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AnswerRepository", "提取互动小游戏异常: ${e.message}", e)
+        }
+        
+        return emptyList()
     }
     
     /**
