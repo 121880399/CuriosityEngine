@@ -1,5 +1,6 @@
 package org.zzy.curiosityengine.ui.screen
 
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -55,6 +56,7 @@ import org.zzy.curiosityengine.data.service.VoiceRecognitionService
 import org.zzy.curiosityengine.ui.components.VoiceInputDialog
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.zzy.curiosityengine.CuriosityEngineApplication
 import org.zzy.curiosityengine.R
 import org.zzy.curiosityengine.ui.components.BottomNavBar
 import org.zzy.curiosityengine.ui.components.FullScreenLoading
@@ -258,10 +260,30 @@ fun HomeScreen(
                 // 语音输入按钮
                 var showVoiceInputDialog by remember { mutableStateOf(false) }
                 val context = LocalContext.current
-                val voiceRecognitionService = remember { VoiceRecognitionService(context) }
+                val activity = context as ComponentActivity
+                val voiceRecognitionService = remember { 
+                    VoiceRecognitionService(context)
+                }
+                
+                // 获取应用程序实例中已注册的权限请求启动器
+                val app = activity.application as CuriosityEngineApplication
+                val permissionLauncher = app.audioPermissionLauncher
 
                 IconButton(
-                    onClick = { showVoiceInputDialog = true },
+                    onClick = { 
+                        // 点击时检查权限并设置回调
+                        org.zzy.curiosityengine.utils.PermissionUtils.setPermissionCallbacks(
+                            activity = activity,
+                            permissionLauncher = permissionLauncher,
+                            onPermissionGranted = {
+                                // 已有权限或权限被授予后，显示语音输入对话框
+                                showVoiceInputDialog = true
+                            },
+                            onPermissionDenied = {
+                                // 权限被拒绝，不显示对话框
+                            }
+                        )
+                    },
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)

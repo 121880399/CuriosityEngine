@@ -1,6 +1,7 @@
 package org.zzy.curiosityengine
 
 import android.app.Application
+import androidx.activity.result.ActivityResultLauncher
 import org.zzy.curiosityengine.data.api.ApiService
 import org.zzy.curiosityengine.data.database.AppDatabase
 import org.zzy.curiosityengine.data.repository.AnswerRepository
@@ -21,6 +22,10 @@ class CuriosityEngineApplication : Application() {
     
     lateinit var answerRepository: AnswerRepository
         private set
+        
+    // 音频权限请求启动器
+    lateinit var audioPermissionLauncher: ActivityResultLauncher<String>
+        internal set
     
     override fun onCreate() {
         super.onCreate()

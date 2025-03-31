@@ -78,9 +78,12 @@ fun VoiceInputDialog(
     var showErrorMessage by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     
-    // 启动语音识别
+    // 初始化并启动语音识别
     LaunchedEffect(Unit) {
         try {
+            // 先初始化语音识别服务
+            voiceRecognitionService.initialize()
+            // 然后开始监听
             voiceRecognitionService.startListening()
             showErrorMessage = false
         } catch (e: Exception) {

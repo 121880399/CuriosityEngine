@@ -34,11 +34,27 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // 获取应用程序实例中的仓库
         val app = application as CuriosityEngineApplication
         val questionRepository = app.questionRepository
         val answerRepository = app.answerRepository
+        
+        // 注册音频权限请求启动器
+        val audioPermissionLauncher = org.zzy.curiosityengine.utils.PermissionUtils.registerForAudioPermissionResult(
+            activity = this,
+            onPermissionGranted = { 
+                // 权限被授予时，将由HomeScreen中设置的回调处理
+                android.util.Log.d("MainActivity", "麦克风权限已授予")
+            },
+            onPermissionDenied = {
+                // 权限被拒绝时，将由HomeScreen中设置的回调处理
+                android.util.Log.d("MainActivity", "麦克风权限被拒绝")
+            }
+        )
+        
+        // 将权限启动器保存到应用程序实例中，以便在Compose中使用
+        app.audioPermissionLauncher = audioPermissionLauncher
 
         setContent {
             CuriosityEngineTheme {
@@ -49,6 +65,8 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // 权限处理逻辑已移至PermissionUtils工具类
 }
 
 /**
